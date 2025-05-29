@@ -4,7 +4,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/minhanocaike/smart-balancer/internal/backend"
+	"github.com/ckminhano/smart-balancer/internal/backend"
 	"github.com/stretchr/testify/assert"
 )
 

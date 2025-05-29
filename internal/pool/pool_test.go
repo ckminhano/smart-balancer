@@ -2,12 +2,11 @@ package pool_test
 
 import (
 	"errors"
-	"fmt"
 	"os"
 	"testing"
 
-	"github.com/minhanocaike/smart-balancer/internal/backend"
-	"github.com/minhanocaike/smart-balancer/internal/pool"
+	"github.com/ckminhano/smart-balancer/internal/backend"
+	"github.com/ckminhano/smart-balancer/internal/pool"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -47,7 +46,6 @@ func TestPool_AddBackend(t *testing.T) {
 			newPool.AddBackend(test.back)
 
 			poolBackend := newPool.ListBackend()
-			fmt.Println(poolBackend)
 			assert.Equal(t, test.totalBackend, len(poolBackend))
 		})
 	}
