@@ -3,36 +3,38 @@ package db
 import (
 	"database/sql"
 	"errors"
+
+	"github.com/ckminhano/smart-balancer/internal/router"
 )
 
-type Router interface {
-	AddSource()
-	RemoveSource()
-	GetTarget()
-}
-
-type routerSQL struct {
+type Storage struct {
 	db *sql.DB
 }
 
-func NewRouter(db *sql.DB) (Router, error) {
+func NewStorage(db *sql.DB) (*Storage, error) {
 	if db == nil {
-		return &routerSQL{}, errors.New("db client cannot be nil")
+		return &Storage{}, errors.New("db client cannot be nil")
 	}
 
-	return &routerSQL{
+	return &Storage{
 		db: db,
 	}, nil
 }
 
-func (r *routerSQL) AddSource() {
+func (st *Storage) AddRoute(route *router.Route) error {
+	// TODO: Implement me
 
+	return nil
 }
 
-func (r *routerSQL) RemoveSource() {
+func (st *Storage) RemoveRoute() error {
 	// TODO: Implement me
+
+	return nil
 }
 
-func (r *routerSQL) GetTarget() {
+func (st *Storage) List() error {
 	// TODO: Implement me
+
+	return nil
 }
