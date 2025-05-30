@@ -29,7 +29,6 @@ type Backend struct {
 	Addr *Address
 	URL  *string
 
-	// Time in seconds of the timeout duration
 	Timeout int16
 
 	// HealthPath is the path to verify the backend health
@@ -72,7 +71,14 @@ func WithHealthPath(addr string) Option {
 	}
 }
 
+func WithTimeout(timeout int16) Option {
+	return func(b *Backend) {
+		b.Timeout = timeout
+	}
+}
+
 // HealthCheck checks if the backend is healthy by sending a GET request to the health path.
+// Any response not equal to 200 returns an error
 func (b *Backend) HealthCheck() (int, error) {
 	if b.HealthPath == nil {
 
