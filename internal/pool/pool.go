@@ -1,23 +1,52 @@
 package pool
 
 import (
+	"context"
 	"errors"
+	"io"
+	"net/http"
 
 	"github.com/ckminhano/smart-balancer/internal/backend"
 )
 
+type Host string
+
 type Pool struct {
-	BackendPool map[string]backend.Backend
+	BackendPool map[string]*backend.Backend
 }
 
 func NewPool() (*Pool, error) {
 	return &Pool{
-		BackendPool: make(map[string]backend.Backend),
+		BackendPool: make(map[string]*backend.Backend),
 	}, nil
 }
 
-func (p *Pool) AddBackend(back backend.Backend) {
-	key := getKey(back)
+// Receive the request
+func (p *Pool) Forward(ctx context.Context, req *http.Request, w <-chan io.Writer) error {
+	if req == nil {
+		return errors.New("http request cannot be nil")
+	}
+
+	return nil
+}
+
+// Call the balancer algorithm to select the backend
+func (p *Pool) pickBackend(ctx context.Context) *backend.Backend {
+	// TODO: Implement me
+
+	return nil
+}
+
+// Pick the backend and foward the request
+// Receive the response and returns to dispatcher
+func (p *Pool) forward(ctx context.Context, dest *backend.Backend) error {
+	// TODO: Implement me
+
+	return nil
+}
+
+func (p *Pool) AddBackend(back *backend.Backend) {
+	key := getKey(*back)
 	p.BackendPool[key] = back
 }
 
@@ -31,8 +60,8 @@ func (p *Pool) RemoveBackend(back backend.Backend) error {
 	return nil
 }
 
-func (p *Pool) ListBackend() []backend.Backend {
-	var backendList []backend.Backend
+func (p *Pool) ListBackend() []*backend.Backend {
+	var backendList []*backend.Backend
 	for _, b := range p.BackendPool {
 		backendList = append(backendList, b)
 	}

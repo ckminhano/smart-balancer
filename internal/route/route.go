@@ -11,16 +11,15 @@ type Route struct {
 	Id   *id.Id
 	Name *string
 
-	// Implementar melhoria utilizando um type host
+	// Source uses a string to represent the host
 	Source string
 	Target *pool.Pool
 }
 
-func NewRoute(name string, source string, target *pool.Pool) (*Route, error) {
-	if source == "" {
+func NewRoute(name string, target *pool.Pool, src string) (*Route, error) {
+	if src == "" {
 		return nil, errors.New("route source cannot be empty")
 	}
-
 	if target == nil {
 		return nil, errors.New("target cannot be nil")
 	}
@@ -28,7 +27,7 @@ func NewRoute(name string, source string, target *pool.Pool) (*Route, error) {
 	return &Route{
 		Id:     id.NewId(),
 		Name:   &name,
-		Source: source,
+		Source: src,
 		Target: target,
 	}, nil
 }
