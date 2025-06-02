@@ -16,7 +16,7 @@ func handleErr(err error) {
 	}
 }
 
-func HelloHandler(w http.ResponseWriter, req *http.Request) {
+func MainHandler(w http.ResponseWriter, req *http.Request) {
 
 	storage, err := db.NewStorage(nil)
 	handleErr(err)
@@ -24,9 +24,10 @@ func HelloHandler(w http.ResponseWriter, req *http.Request) {
 	newProxy, err := server.NewProxy(context.Background(), storage)
 	handleErr(err)
 
-	newProxy.Dispatch(req.Context(), *req)
+	res := make(chan http.Response)
+	_ = newProxy.Dispatch(req.Context(), res, req)
 
-	fmt.Fprintf(w, "Ola, tudo bem?")
+	_, _ = fmt.Fprintf(w, "Test MainHandler")
 }
 
 func main() {
@@ -35,7 +36,10 @@ func main() {
 		Addr: ":3000",
 	}
 
-	http.HandleFunc("/hello", HelloHandler)
+	http.HandleFunc("/", MainHandler)
 
-	srv.ListenAndServe()
+	err := srv.ListenAndServe()
+	if err != nil {
+		log.Fatal(err)
+	}
 }

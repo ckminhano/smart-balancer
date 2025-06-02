@@ -3,7 +3,6 @@ package pool
 import (
 	"context"
 	"errors"
-	"io"
 	"net/http"
 
 	"github.com/ckminhano/smart-balancer/internal/backend"
@@ -22,7 +21,7 @@ func NewPool() (*Pool, error) {
 }
 
 // Receive the request
-func (p *Pool) Forward(ctx context.Context, req *http.Request, w <-chan io.Writer) error {
+func (p *Pool) Dispatch(ctx context.Context, res chan<- http.Response, req *http.Request) error {
 	if req == nil {
 		return errors.New("http request cannot be nil")
 	}
@@ -39,7 +38,7 @@ func (p *Pool) pickBackend(ctx context.Context) *backend.Backend {
 
 // Pick the backend and foward the request
 // Receive the response and returns to dispatcher
-func (p *Pool) forward(ctx context.Context, dest *backend.Backend) error {
+func (p *Pool) dispatch(ctx context.Context, dest *backend.Backend) error {
 	// TODO: Implement me
 
 	return nil

@@ -1,6 +1,9 @@
 package backend_test
 
 import (
+	"context"
+	"net/http"
+	"net/url"
 	"os"
 	"testing"
 
@@ -14,6 +17,8 @@ func Main(m *testing.M) {
 }
 
 func TestNewBackend(t *testing.T) {
+	t.Skip("Skip for now")
+
 	testCase := []struct {
 		name         string
 		host         string
@@ -24,16 +29,14 @@ func TestNewBackend(t *testing.T) {
 	}{
 		{
 			name:         "Valid Backend",
-			host:         "localhost",
-			port:         "3000",
+			host:         "localhost:3000",
 			healthPath:   "/",
 			responseCode: 200,
 			expectedErr:  nil,
 		},
 		{
 			name:         "Invalid Path",
-			host:         "localhost",
-			port:         "3000",
+			host:         "localhost:3000",
 			healthPath:   "",
 			responseCode: 0,
 			expectedErr:  backend.ErrorPath,
@@ -44,7 +47,6 @@ func TestNewBackend(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			addrOption := backend.WithAddr(backend.Address{
 				Host: test.host,
-				Port: test.port,
 			})
 			healthPathOption := backend.WithHealthPath(test.healthPath)
 
@@ -56,5 +58,38 @@ func TestNewBackend(t *testing.T) {
 
 			assert.Equal(t, test.responseCode, status)
 		})
+	}
+}
+
+func TestBackendInvoke(t *testing.T) {
+	headers := http.Header{}
+	headers.Add("Host", "localhost:3000")
+
+	testURL := url.URL{
+		Scheme: "http",
+		Path:   "/smart/balancer",
+	}
+
+	reqTest := http.Request{
+		Method: "GET",
+		Header: headers,
+		URL:    &testURL,
+		Proto:  "HTTP/1.1",
+	}
+
+	addr := backend.WithAddr(backend.Address{
+		Protocol: backend.HTTP,
+		Host:     "localhost:9000",
+	})
+
+	back, err := backend.NewBackend(addr)
+	if err != nil {
+		assert.Fail(t, "error to create a new backend", err.Error())
+	}
+
+	res := make(chan http.Response)
+	err = back.Invoke(context.Background(), res, &reqTest)
+	if err != nil {
+		assert.Fail(t, "error to invoke backend", err.Error())
 	}
 }

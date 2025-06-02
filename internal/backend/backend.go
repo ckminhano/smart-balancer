@@ -1,9 +1,11 @@
 package backend
 
 import (
+	"context"
 	"errors"
-	"fmt"
+	"log"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 )
@@ -53,9 +55,8 @@ func NewBackend(opts ...Option) (*Backend, error) {
 		return nil, errors.New("address cannot be nil, use WithAddress to configure host and port")
 	}
 
-	defaultUrl := buildAddress(b.Addr.Host, buildPort(b.Addr.Port), "")
+	b.Addr.Port = buildPort(b.Addr.Host)
 
-	b.URL = &defaultUrl
 	return b, nil
 }
 
@@ -75,6 +76,40 @@ func WithTimeout(timeout int16) Option {
 	return func(b *Backend) {
 		b.Timeout = timeout
 	}
+}
+
+func (back *Backend) Invoke(ctx context.Context, res chan<- http.Response, req *http.Request) error {
+	headers := req.Header.Clone()
+	path := req.URL.Path
+	body := req.Body
+	protocol := req.Proto
+
+	newURL := url.URL{
+		Host:   back.Addr.Host,
+		Path:   path,
+		Scheme: req.URL.Scheme,
+	}
+
+	log.Println(newURL)
+
+	newReq := http.Request{
+		Method: req.Method,
+		URL:    &newURL,
+		Body:   body,
+		Header: headers,
+		Proto:  protocol,
+	}
+
+	client := http.Client{}
+
+	resBackend, err := client.Do(&newReq)
+	if err != nil {
+		return err
+	}
+
+	res <- *resBackend
+
+	return nil
 }
 
 // HealthCheck checks if the backend is healthy by sending a GET request to the health path.
@@ -98,10 +133,6 @@ func (b *Backend) HealthCheck() (int, error) {
 	return resp.StatusCode, nil
 }
 
-func buildAddress(host, port, path string) string {
-	return fmt.Sprintf("http://%s:%s/%s", host, port, path)
-}
-
 func buildURL(url, path string) string {
 	if path == "/" {
 		return url
@@ -114,10 +145,12 @@ func buildURL(url, path string) string {
 	return url + path
 }
 
-func buildPort(port string) string {
-	if port == "" {
+func buildPort(host string) string {
+	if host == "" {
 		return "80"
 	}
+
+	port := strings.Split(host, ":")[1]
 
 	return port
 }

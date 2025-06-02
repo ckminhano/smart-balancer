@@ -22,14 +22,21 @@ func NewProxy(ctx context.Context, storage *db.Storage) (*Proxy, error) {
 	}, nil
 }
 
-func (p *Proxy) Dispatch(ctx context.Context, req http.Request) error {
+func (p *Proxy) Forward(ctx context.Context, res chan<- http.Response, req *http.Request) error {
 	host := req.Host
 
 	if host == "" {
 		return errors.New("could not identify host, check host header value")
 	}
 
+	fmt.Println("path: ", req.URL.Path)
+
 	targetPool, err := p.Db.GetTarget(host)
+	if err != nil {
+		return err
+	}
+
+	err = targetPool.Dispatch(ctx, res, req)
 	if err != nil {
 		return err
 	}
