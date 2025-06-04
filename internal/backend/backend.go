@@ -78,16 +78,17 @@ func WithTimeout(timeout int16) Option {
 	}
 }
 
-func (back *Backend) Invoke(ctx context.Context, res chan<- http.Response, req *http.Request) error {
+func (back *Backend) Invoke(ctx context.Context, res chan<- *http.Response, req *http.Request) error {
 	headers := req.Header.Clone()
 	path := req.URL.Path
 	body := req.Body
 	protocol := req.Proto
 
+	// TODO: Ajustar o scheme para o protocolo da proxy request
 	newURL := url.URL{
 		Host:   back.Addr.Host,
 		Path:   path,
-		Scheme: req.URL.Scheme,
+		Scheme: "http",
 	}
 
 	log.Println(newURL)
@@ -102,12 +103,18 @@ func (back *Backend) Invoke(ctx context.Context, res chan<- http.Response, req *
 
 	client := http.Client{}
 
-	resBackend, err := client.Do(&newReq)
+	backendResp, err := client.Do(&newReq)
 	if err != nil {
 		return err
 	}
 
-	res <- *resBackend
+	select {
+	case res <- backendResp:
+		return nil
+	case <-ctx.Done():
+		backendResp.Body.Close()
+		return ctx.Err()
+	}
 
 	return nil
 }

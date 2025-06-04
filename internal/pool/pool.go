@@ -21,9 +21,16 @@ func NewPool() (*Pool, error) {
 }
 
 // Receive the request
-func (p *Pool) Dispatch(ctx context.Context, res chan<- http.Response, req *http.Request) error {
+func (p *Pool) Dispatch(ctx context.Context, res chan<- *http.Response, req *http.Request) error {
 	if req == nil {
 		return errors.New("http request cannot be nil")
+	}
+
+	dest := p.pickBackend(ctx)
+
+	err := dest.Invoke(ctx, res, req)
+	if err != nil {
+		return err
 	}
 
 	return nil
@@ -31,14 +38,6 @@ func (p *Pool) Dispatch(ctx context.Context, res chan<- http.Response, req *http
 
 // Call the balancer algorithm to select the backend
 func (p *Pool) pickBackend(ctx context.Context) *backend.Backend {
-	// TODO: Implement me
-
-	return nil
-}
-
-// Pick the backend and foward the request
-// Receive the response and returns to dispatcher
-func (p *Pool) dispatch(ctx context.Context, dest *backend.Backend) error {
 	// TODO: Implement me
 
 	return nil
