@@ -26,9 +26,12 @@ func (p *Pool) Dispatch(ctx context.Context, res chan<- *http.Response, req *htt
 		return errors.New("http request cannot be nil")
 	}
 
-	dest := p.pickBackend(ctx)
+	dest, err := p.pickBackend()
+	if err != nil {
+		return err
+	}
 
-	err := dest.Invoke(ctx, res, req)
+	err = dest.Invoke(ctx, res, req)
 	if err != nil {
 		return err
 	}
@@ -37,10 +40,22 @@ func (p *Pool) Dispatch(ctx context.Context, res chan<- *http.Response, req *htt
 }
 
 // Call the balancer algorithm to select the backend
-func (p *Pool) pickBackend(ctx context.Context) *backend.Backend {
+func (p *Pool) pickBackend() (*backend.Backend, error) {
 	// TODO: Implement me
 
-	return nil
+	// FIXME: Mock Test
+	addr := backend.Address{
+		Host:     "localhost:9000",
+		Protocol: "HTTP",
+		Port:     "9000",
+	}
+
+	back, err := backend.NewBackend(backend.WithAddr(addr))
+	if err != nil {
+		return nil, nil
+	}
+
+	return back, nil
 }
 
 func (p *Pool) AddBackend(back *backend.Backend) {

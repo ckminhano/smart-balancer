@@ -3,7 +3,6 @@ package server
 import (
 	"context"
 	"errors"
-	"fmt"
 	"net/http"
 
 	"github.com/ckminhano/smart-balancer/internal/db"
@@ -33,8 +32,6 @@ func (p *Proxy) Forward(ctx context.Context, res http.Response, req *http.Reques
 	if host == "" {
 		return errors.New("could not identify host, check host header value")
 	}
-
-	fmt.Println("path: ", req.URL.Path)
 
 	targetPool, err := p.Db.GetTarget(host)
 	if err != nil {

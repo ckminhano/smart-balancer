@@ -115,8 +115,6 @@ func (back *Backend) Invoke(ctx context.Context, res chan<- *http.Response, req 
 		backendResp.Body.Close()
 		return ctx.Err()
 	}
-
-	return nil
 }
 
 // HealthCheck checks if the backend is healthy by sending a GET request to the health path.
