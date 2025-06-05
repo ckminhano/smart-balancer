@@ -12,38 +12,45 @@ import (
 type Proxy struct {
 	Ctx context.Context
 	Db  *db.Storage
-
-	// TODO: Verificar se o response vem do server
-	Res chan<- *http.Response
 }
 
 func NewProxy(ctx context.Context, storage *db.Storage) (*Proxy, error) {
 	return &Proxy{
 		Ctx: ctx,
 		Db:  storage,
-		Res: make(chan<- *http.Response),
 	}, nil
 }
 
-func (p *Proxy) Forward(ctx context.Context, res http.Response, req *http.Request) error {
+func (p *Proxy) Forward(ctx context.Context, req *http.Request) (*http.Response, error) {
 	host := req.Host
-	defer close(p.Res)
 
 	if host == "" {
-		return errors.New("could not identify host, check host header value")
+		return nil, errors.New("could not identify host, check host header value")
 	}
 
 	targetPool, err := p.Db.GetTarget(host)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	err = targetPool.Dispatch(ctx, p.Res, req)
-	if err != nil {
-		return err
-	}
+	resCh := make(chan *http.Response, 1)
+	errCh := make(chan error, 1)
 
-	return nil
+	go func() {
+		err = targetPool.Dispatch(ctx, resCh, req)
+		if err != nil {
+			errCh <- err
+		}
+	}()
+
+	select {
+	case resp := <-resCh:
+		return resp, nil
+	case err := <-errCh:
+		return nil, err
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	}
 }
 
 func (p *Proxy) AddRoute(route *route.Route) error {

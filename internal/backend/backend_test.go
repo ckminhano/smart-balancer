@@ -87,7 +87,7 @@ func TestBackendInvoke(t *testing.T) {
 		assert.Fail(t, "error to create a new backend", err.Error())
 	}
 
-	res := make(chan http.Response)
+	res := make(chan *http.Response)
 	err = back.Invoke(context.Background(), res, &reqTest)
 	if err != nil {
 		assert.Fail(t, "error to invoke backend", err.Error())

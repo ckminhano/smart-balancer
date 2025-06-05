@@ -3,10 +3,13 @@ package main
 import (
 	"context"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 
 	"github.com/ckminhano/smart-balancer/internal/backend"
+	"github.com/ckminhano/smart-balancer/internal/db"
+	"github.com/ckminhano/smart-balancer/internal/server"
 )
 
 func handleErr(err error) {
@@ -16,23 +19,29 @@ func handleErr(err error) {
 }
 
 func MainHandler(w http.ResponseWriter, req *http.Request) {
+	res, err := CallProxy(req)
+	if err != nil {
+		w.WriteHeader(http.StatusBadGateway)
+		fmt.Fprintf(w, "error to forward backend")
+		return
+	}
+	defer res.Body.Close()
 
-	// storage, err := db.NewStorage(nil)
-	// handleErr(err)
+	for k, v := range res.Header {
+		for _, vv := range v {
+			w.Header().Add(k, vv)
+		}
+	}
 
-	// newProxy, err := server.NewProxy(context.Background(), storage)
-	// handleErr(err)
+	w.WriteHeader(res.StatusCode)
 
-	// res := make(chan http.Response)
-	// _ = newProxy.Forward(req.Context(), res, req)
-
-	CallBackend(req)
-
-	_, _ = fmt.Fprintf(w, "proxy executed")
+	_, err = io.Copy(w, res.Body)
+	if err != nil {
+		log.Println("error copying body to client: ", err.Error())
+	}
 }
 
 func main() {
-
 	srv := http.Server{
 		Addr: ":3000",
 	}
@@ -56,10 +65,27 @@ func CallBackend(req *http.Request) {
 		log.Fatal("error to create a new backend: ", err.Error())
 	}
 
-	res := make(chan http.Response)
+	res := make(chan *http.Response)
 	defer close(res)
 	err = back.Invoke(context.Background(), res, req)
 	if err != nil {
 		log.Fatal("error to invoke backend: ", err.Error())
 	}
+}
+
+func CallProxy(req *http.Request) (*http.Response, error) {
+	storage, err := db.NewStorage(nil)
+	handleErr(err)
+
+	ctx := req.Context()
+
+	testProxy, err := server.NewProxy(context.Background(), storage)
+	handleErr(err)
+
+	responseProxy, err := testProxy.Forward(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+
+	return responseProxy, nil
 }
