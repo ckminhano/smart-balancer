@@ -32,6 +32,7 @@ func NewServer(addr string, proxy *Proxy) (*Server, error) {
 }
 
 func (s *Server) ProxyHandler(w http.ResponseWriter, req *http.Request) {
+	log.Println("received request: ", req.Method, req.URL.Path)
 	res, err := s.Proxy.Forward(s.ctx, req)
 	if err != nil {
 		log.Printf("proxy error: %v\n", err)
@@ -56,6 +57,7 @@ func (s *Server) ProxyHandler(w http.ResponseWriter, req *http.Request) {
 	if err != nil {
 		log.Println("error copying body to client: ", err.Error())
 	}
+	log.Println("executed request: ", req.Method, req.URL.Path, "with status code: ", res.StatusCode)
 }
 
 func (s *Server) Serve() error {
