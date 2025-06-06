@@ -91,8 +91,6 @@ func (back *Backend) Invoke(ctx context.Context, res chan<- *http.Response, req 
 		Scheme: "http",
 	}
 
-	log.Println(newURL)
-
 	newReq := http.Request{
 		Method: req.Method,
 		URL:    &newURL,
@@ -112,7 +110,11 @@ func (back *Backend) Invoke(ctx context.Context, res chan<- *http.Response, req 
 	case res <- backendResp:
 		return nil
 	case <-ctx.Done():
-		backendResp.Body.Close()
+		err := backendResp.Body.Close()
+		if err != nil {
+			log.Printf("error to close backend response body: %v", err)
+		}
+
 		return ctx.Err()
 	}
 }
