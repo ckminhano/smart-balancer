@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"strings"
 
 	"github.com/ckminhano/smart-balancer/internal/backend"
 )
@@ -43,24 +44,21 @@ func (p *Pool) Dispatch(ctx context.Context, res chan<- *http.Response, req *htt
 func (p *Pool) pickBackend() (*backend.Backend, error) {
 	// TODO: Implement me
 
-	// FIXME: Mock Test
-	addr := backend.Address{
-		Host:     "localhost:9000",
-		Protocol: "HTTP",
-		Port:     "9000",
-	}
+	// FIXME: Replace the mock back[0] for the right back
+	backs := p.ListBackend()
 
-	back, err := backend.NewBackend(backend.WithAddr(addr))
-	if err != nil {
-		return nil, nil
-	}
-
-	return back, nil
+	return backs[0], nil
 }
 
-func (p *Pool) AddBackend(back *backend.Backend) {
+func (p *Pool) AddBackend(back *backend.Backend) error {
 	key := getKey(*back)
+
+	if _, ok := p.BackendPool[key]; ok {
+		return errors.New("backend already exists in this pool")
+	}
+
 	p.BackendPool[key] = back
+	return nil
 }
 
 func (p *Pool) RemoveBackend(back backend.Backend) error {
@@ -82,11 +80,14 @@ func (p *Pool) ListBackend() []*backend.Backend {
 	return backendList
 }
 
+// Scan checks periodically the health of the backends in the pool.
+// In case of a backend failure, it should remove the backend from the pool.
 func (p *Pool) Scan(back backend.Backend) error {
 	return nil
 }
 
+// getKey generates a unique key for the backend based on its address.
 func getKey(back backend.Backend) string {
-	key := back.Addr.Host + ":" + back.Addr.Port
+	key := strings.ToLower(back.Addr.Host + ":" + back.Addr.Port)
 	return key
 }

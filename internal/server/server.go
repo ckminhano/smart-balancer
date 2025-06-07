@@ -19,8 +19,8 @@ type Server struct {
 }
 
 func NewServer(addr string, proxy *Proxy) (*Server, error) {
-	if proxy.Db == nil {
-		return nil, errors.New("proxy db cannot be empty")
+	if proxy.Storage == nil {
+		return nil, errors.New("proxy storage cannot be empty")
 	}
 
 	return &Server{
@@ -46,9 +46,11 @@ func (s *Server) ProxyHandler(w http.ResponseWriter, req *http.Request) {
 		}
 	}()
 
-	for k, v := range res.Header {
-		for _, vv := range v {
-			w.Header().Add(k, vv)
+	// Iterate over the header hListValue because the header can have multiple values with a slice of strings
+	// and hValue is a single value of the header
+	for hName, hListValue := range res.Header {
+		for _, hValue := range hListValue {
+			w.Header().Add(hName, hValue)
 		}
 	}
 

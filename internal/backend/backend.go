@@ -5,7 +5,6 @@ import (
 	"errors"
 	"log"
 	"net/http"
-	"net/url"
 	"strings"
 	"time"
 )
@@ -28,8 +27,9 @@ type Address struct {
 }
 
 type Backend struct {
-	Addr *Address
-	URL  *string
+	Addr  *Address
+	URL   *string
+	Conns uint32
 
 	Timeout int16
 
@@ -79,29 +79,10 @@ func WithTimeout(timeout int16) Option {
 }
 
 func (back *Backend) Invoke(ctx context.Context, res chan<- *http.Response, req *http.Request) error {
-	headers := req.Header.Clone()
-	path := req.URL.Path
-	body := req.Body
-	protocol := req.Proto
+	// Change request host to backend host
+	req.URL.Host = back.Addr.Host
 
-	// TODO: Ajustar o scheme para o protocolo da proxy request
-	newURL := url.URL{
-		Host:   back.Addr.Host,
-		Path:   path,
-		Scheme: "http",
-	}
-
-	newReq := http.Request{
-		Method: req.Method,
-		URL:    &newURL,
-		Body:   body,
-		Header: headers,
-		Proto:  protocol,
-	}
-
-	client := http.Client{}
-
-	backendResp, err := client.Do(&newReq)
+	backendResp, err := back.client.Do(req)
 	if err != nil {
 		return err
 	}
@@ -113,6 +94,7 @@ func (back *Backend) Invoke(ctx context.Context, res chan<- *http.Response, req 
 		err := backendResp.Body.Close()
 		if err != nil {
 			log.Printf("error to close backend response body: %v", err)
+			return err
 		}
 
 		return ctx.Err()

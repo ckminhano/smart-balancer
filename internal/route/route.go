@@ -11,13 +11,17 @@ type Route struct {
 	Id   *id.Id
 	Name *string
 
-	// Source uses a string to represent the host
-	Source string
+	// origin uses a string to represent the fqdn
+	Origin string
 	Target *pool.Pool
 }
 
-func NewRoute(name string, target *pool.Pool, src string) (*Route, error) {
-	if src == "" {
+// NewRoute create and returns a new NewRoute
+// - name: name to identify the route
+// - target: pool to route request
+// - origin: fqdn or host for the received request and route rule
+func NewRoute(name string, target *pool.Pool, origin string) (*Route, error) {
+	if origin == "" {
 		return nil, errors.New("route source cannot be empty")
 	}
 	if target == nil {
@@ -27,7 +31,7 @@ func NewRoute(name string, target *pool.Pool, src string) (*Route, error) {
 	return &Route{
 		Id:     id.NewId(),
 		Name:   &name,
-		Source: src,
+		Origin: origin,
 		Target: target,
 	}, nil
 }

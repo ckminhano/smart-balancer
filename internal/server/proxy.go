@@ -3,21 +3,31 @@ package server
 import (
 	"context"
 	"errors"
+	"io"
 	"net/http"
+	"net/url"
 
-	"github.com/ckminhano/smart-balancer/internal/db"
 	"github.com/ckminhano/smart-balancer/internal/route"
+	"github.com/ckminhano/smart-balancer/internal/storage"
 )
 
-type Proxy struct {
-	Ctx context.Context
-	Db  *db.Storage
+type requestParameters struct {
+	headers  http.Header
+	body     io.ReadCloser
+	protocol string
+	method   string
+	url      url.URL
 }
 
-func NewProxy(ctx context.Context, storage *db.Storage) (*Proxy, error) {
+type Proxy struct {
+	Ctx     context.Context
+	Storage *storage.Storage
+}
+
+func NewProxy(ctx context.Context, storage *storage.Storage) (*Proxy, error) {
 	return &Proxy{
-		Ctx: ctx,
-		Db:  storage,
+		Ctx:     ctx,
+		Storage: storage,
 	}, nil
 }
 
@@ -28,7 +38,7 @@ func (p *Proxy) Forward(ctx context.Context, req *http.Request) (*http.Response,
 		return nil, errors.New("could not identify host, check host header value")
 	}
 
-	targetPool, err := p.Db.GetTarget(host)
+	targetPool, err := p.Storage.GetTarget(host)
 	if err != nil {
 		return nil, err
 	}
@@ -36,8 +46,9 @@ func (p *Proxy) Forward(ctx context.Context, req *http.Request) (*http.Response,
 	resCh := make(chan *http.Response, 1)
 	errCh := make(chan error, 1)
 
+	forwardRequest := middleware(req)
 	go func() {
-		err = targetPool.Dispatch(ctx, resCh, req)
+		err = targetPool.Dispatch(ctx, resCh, forwardRequest)
 		if err != nil {
 			errCh <- err
 		}
@@ -53,33 +64,40 @@ func (p *Proxy) Forward(ctx context.Context, req *http.Request) (*http.Response,
 	}
 }
 
-func (p *Proxy) AddRoute(route *route.Route) error {
-	err := p.Db.AddRoute(route)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (p *Proxy) RemoveRoute(route *route.Route) error {
-	err := p.Db.RemoveRoute(*route.Id)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
 func (p *Proxy) ListRoutes() ([]*route.Route, error) {
-	routes, err := p.Db.List()
-	if err != nil {
-		return nil, err
-	}
+	routes := p.Storage.List()
 
 	if len(routes) == 0 {
 		return nil, errors.New("RoutesNotFound")
 	}
 
 	return routes, nil
+}
+
+// middleware apply the transformation rules
+func middleware(req *http.Request) *http.Request {
+	reqParam := requestParameters{
+		headers:  req.Header.Clone(),
+		body:     req.Body,
+		protocol: req.Proto,
+		method:   req.Method,
+		url: url.URL{
+			Path: req.URL.Path,
+			// FIXME: This is a temporary solution, we should use the protocol from the request
+			Scheme: "http",
+		},
+	}
+
+	// TODO: Check parser
+	// I can have transformations here
+
+	backendRequest := http.Request{
+		Method: reqParam.method,
+		URL:    &reqParam.url,
+		Body:   reqParam.body,
+		Header: reqParam.headers,
+		Proto:  reqParam.protocol,
+	}
+
+	return &backendRequest
 }

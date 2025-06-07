@@ -1,0 +1,36 @@
+{
+    "routes": [
+        {
+            "name": "app-disia-frontend",
+            "origin": "app.disia.com.br",
+            "backends": [
+                {
+                    "name": "app-server-1",
+                    "host": "localhost:9000",
+                    "health": "/healthcheck"
+                },
+                {
+                    "name": "app-server-2",
+                    "host": "localhost:9001",
+                    "health": "/healthcheck"
+                }
+            ]
+        },
+        {
+            "name": "app-disia-landingpage",
+            "origin": "disia.com.br",
+            "backends": [
+                {
+                    "name": "app-server-1",
+                    "host": "localhost:5000",
+                    "health": "/healthcheck"
+                },
+                {
+                    "name": "app-server-2",
+                    "host": "localhost:5001",
+                    "health": "/healthcheck"
+                }
+            ]
+        }
+    ]
+}

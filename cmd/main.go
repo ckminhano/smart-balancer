@@ -4,8 +4,8 @@ import (
 	"context"
 	"log"
 
-	"github.com/ckminhano/smart-balancer/internal/db"
 	"github.com/ckminhano/smart-balancer/internal/server"
+	"github.com/ckminhano/smart-balancer/internal/storage"
 )
 
 func main() {
@@ -24,7 +24,10 @@ func main() {
 }
 
 func load() *server.Proxy {
-	storage, err := db.NewStorage(nil)
+	// TODO: Load path from flag
+	path := "config"
+
+	storage, err := storage.NewStorage(path)
 	if err != nil {
 		log.Panicf("error to load storage: %v", err)
 	}
