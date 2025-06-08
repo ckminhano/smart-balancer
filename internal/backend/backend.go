@@ -29,7 +29,7 @@ type Address struct {
 type Backend struct {
 	Addr  *Address
 	URL   *string
-	Conns uint32
+	Conns int
 
 	Timeout int16
 

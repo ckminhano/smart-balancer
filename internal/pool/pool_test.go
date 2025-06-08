@@ -43,7 +43,8 @@ func TestPool_AddBackend(t *testing.T) {
 			newPool, err := pool.NewPool()
 			assert.Equal(t, test.expectedErr, err)
 
-			newPool.AddBackend(&test.back)
+			err = newPool.AddBackend(&test.back)
+			assert.Equal(t, test.expectedErr, err)
 
 			poolBackend := newPool.ListBackend()
 			assert.Equal(t, test.totalBackend, len(poolBackend))
