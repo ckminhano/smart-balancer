@@ -12,12 +12,12 @@ func main() {
 	proxy := load()
 	addr := ":3000"
 
-	proxyServer, err := server.NewServer(addr, proxy)
+	s, err := server.NewServer(addr, proxy)
 	if err != nil {
 		log.Panicf("error to create a new server: %v", err)
 	}
 
-	err = proxyServer.Serve()
+	err = s.Serve()
 	if err != nil {
 		log.Panicf("error to start server: %v", err)
 	}

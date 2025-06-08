@@ -45,7 +45,6 @@ func (st *Storage) GetTarget(origin string) (*pool.Pool, error) {
 	if _, ok := st.routes[origin]; !ok {
 		return nil, errors.New("origin not found in the routes")
 	}
-
 	r := st.routes[origin]
 
 	return r.Target, nil
@@ -53,6 +52,7 @@ func (st *Storage) GetTarget(origin string) (*pool.Pool, error) {
 
 func (st *Storage) List() []*route.Route {
 	routes := make([]*route.Route, 0)
+
 	for _, v := range st.routes {
 		routes = append(routes, v)
 	}

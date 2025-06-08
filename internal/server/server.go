@@ -13,8 +13,9 @@ import (
 )
 
 type Server struct {
+	http.Server
+
 	Proxy *Proxy
-	srv   http.Server
 	ctx   context.Context
 }
 
@@ -25,7 +26,7 @@ func NewServer(addr string, proxy *Proxy) (*Server, error) {
 
 	return &Server{
 		Proxy: proxy,
-		srv: http.Server{
+		Server: http.Server{
 			Addr: addr,
 		},
 	}, nil
@@ -70,13 +71,13 @@ func (s *Server) Serve() error {
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, os.Interrupt, syscall.SIGTERM)
 
-	s.srv.Handler = http.HandlerFunc(s.ProxyHandler)
-	s.srv.ReadTimeout = 10 * time.Second
-	s.srv.WriteTimeout = 10 * time.Second
+	s.Handler = http.HandlerFunc(s.ProxyHandler)
+	s.ReadTimeout = 10 * time.Second
+	s.WriteTimeout = 10 * time.Second
 
 	go func() {
-		log.Println("starting proxy server on ", s.srv.Addr)
-		if err := s.srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+		log.Println("starting proxy server on ", s.Addr)
+		if err := s.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Fatalf("server error: %v", err)
 		}
 	}()
@@ -87,7 +88,7 @@ func (s *Server) Serve() error {
 	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer shutdownCancel()
 
-	if err := s.srv.Shutdown(shutdownCtx); err != nil {
+	if err := s.Shutdown(shutdownCtx); err != nil {
 		log.Fatalf("shutdown error: %v", err)
 	}
 
