@@ -2,6 +2,7 @@ package pool_test
 
 import (
 	"errors"
+	"log/slog"
 	"os"
 	"testing"
 
@@ -17,8 +18,7 @@ func Main(m *testing.M) {
 
 func TestPool_AddBackend(t *testing.T) {
 	addrOption := backend.WithAddr(backend.Address{
-		Host: "localhost",
-		Port: "3000",
+		Host: "localhost:9000",
 	})
 
 	back, err := backend.NewBackend(addrOption)
@@ -38,15 +38,16 @@ func TestPool_AddBackend(t *testing.T) {
 		},
 	}
 
+	logger := slog.Default()
 	for _, test := range testCase {
 		t.Run(test.name, func(t *testing.T) {
-			newPool, err := pool.NewPool()
+			newPool, err := pool.NewPool(logger)
 			assert.Equal(t, test.expectedErr, err)
 
-			err = newPool.AddBackend(&test.back)
+			err = newPool.Add(&test.back)
 			assert.Equal(t, test.expectedErr, err)
 
-			poolBackend := newPool.ListBackend()
+			poolBackend := newPool.List()
 			assert.Equal(t, test.totalBackend, len(poolBackend))
 		})
 	}
@@ -54,8 +55,7 @@ func TestPool_AddBackend(t *testing.T) {
 
 func TestPool_RemoveBackend(t *testing.T) {
 	addrOption := backend.WithAddr(backend.Address{
-		Host: "localhost",
-		Port: "3000",
+		Host: "localhost:9000",
 	})
 
 	back, err := backend.NewBackend(addrOption)
@@ -79,15 +79,17 @@ func TestPool_RemoveBackend(t *testing.T) {
 		expectedErr:  nil,
 	}
 
-	newPool, err := pool.NewPool()
+	logger := slog.Default()
+	newPool, err := pool.NewPool(logger)
 	assert.Equal(t, testCaseRemovePool.expectedErr, err)
 
-	newPool.AddBackend(&testCaseRemovePool.back)
-
-	err = newPool.RemoveBackend(testCaseRemovePool.back)
+	err = newPool.Add(&testCaseRemovePool.back)
 	assert.Equal(t, testCaseRemovePool.expectedErr, err)
 
-	poolBackend := newPool.ListBackend()
+	err = newPool.Remove(testCaseRemovePool.back)
+	assert.Equal(t, testCaseRemovePool.expectedErr, err)
+
+	poolBackend := newPool.List()
 	assert.Equal(t, testCaseRemovePool.totalBackend, len(poolBackend))
 
 	testCaseInvalidPool := struct {
@@ -95,12 +97,58 @@ func TestPool_RemoveBackend(t *testing.T) {
 		expectedErr error
 	}{
 		back:        *backEmpty,
-		expectedErr: errors.New("host and port not found"),
+		expectedErr: errors.New("backend id not found in the pool"),
 	}
 
-	_, err = pool.NewPool()
+	_, err = pool.NewPool(logger)
 	assert.NoError(t, err)
 
-	err = newPool.RemoveBackend(testCaseInvalidPool.back)
+	err = newPool.Remove(testCaseInvalidPool.back)
 	assert.Equal(t, testCaseInvalidPool.expectedErr, err)
+}
+
+func TestPool_SelectBackend(t *testing.T) {
+	// TODO: Improve testCase for range loop
+
+	addrOption1 := backend.WithAddr(backend.Address{
+		Host: "localhost:9000",
+	})
+	back1, err := backend.NewBackend(addrOption1)
+	assert.NoError(t, err)
+	back1.Conns = 10
+
+	addrOption2 := backend.WithAddr(backend.Address{
+		Host: "localhost:9001",
+	})
+	back2, err := backend.NewBackend(addrOption2)
+	assert.NoError(t, err)
+	back2.Conns = 15
+
+	addrOption3 := backend.WithAddr(backend.Address{
+		Host: "localhost:9002",
+	})
+	back3, err := backend.NewBackend(addrOption3)
+	assert.NoError(t, err)
+	back3.Conns = 5
+
+	logger := slog.Default()
+	p, err := pool.NewPool(logger)
+	assert.NoError(t, err)
+
+	testCaseSelect := struct {
+		testPool        *pool.Pool
+		selectedBackend *backend.Backend
+	}{
+		testPool:        p,
+		selectedBackend: back3,
+	}
+
+	backs := []*backend.Backend{back1, back2, back3}
+
+	testCaseSelect.testPool.Backends = backs
+
+	selected, err := testCaseSelect.testPool.Select()
+	assert.NoError(t, err)
+
+	assert.Equal(t, testCaseSelect.selectedBackend, selected)
 }

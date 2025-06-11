@@ -24,15 +24,15 @@ type Proxy struct {
 	Storage *storage.Storage
 }
 
-func NewProxy(ctx context.Context, storage *storage.Storage) (*Proxy, error) {
+func NewProxy(storage *storage.Storage) (*Proxy, error) {
 	return &Proxy{
-		Ctx:     ctx,
 		Storage: storage,
 	}, nil
 }
 
 func (p *Proxy) Forward(ctx context.Context, req *http.Request) (*http.Response, error) {
 	host := req.Host
+	p.Ctx = ctx
 
 	if host == "" {
 		return nil, errors.New("could not identify host, check host header value")

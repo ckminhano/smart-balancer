@@ -4,9 +4,14 @@ import (
 	"context"
 	"errors"
 	"log"
+	"log/slog"
 	"net/http"
 	"strings"
+	"sync/atomic"
 	"time"
+
+	"github.com/ckminhano/smart-balancer/pkg/id"
+	"github.com/google/uuid"
 )
 
 type Option func(*Backend)
@@ -27,24 +32,29 @@ type Address struct {
 }
 
 type Backend struct {
-	Addr  *Address
-	URL   *string
-	Conns int
+	*http.Client
+	Logger *slog.Logger
 
-	Timeout int16
+	Addr *Address
+	URL  *string
+	Id   *id.Id
 
-	// HealthPath is the path to verify the backend health
+	Timeout    int16
 	HealthPath *string
-	client     *http.Client
+
+	// Conns is not safe to use, instead get with TotalConn()
+	Conns  int32
+	Active bool
 }
 
 // NewBackend creates a new backend instance with the given address.
 func NewBackend(opts ...Option) (*Backend, error) {
 	b := &Backend{
 		Timeout: 30,
-		client: &http.Client{
+		Client: &http.Client{
 			Timeout: time.Second * 30,
 		},
+		Id: id.NewId(),
 	}
 
 	for _, opt := range opts {
@@ -55,7 +65,13 @@ func NewBackend(opts ...Option) (*Backend, error) {
 		return nil, errors.New("address cannot be nil, use WithAddress to configure host and port")
 	}
 
-	b.Addr.Port = buildPort(b.Addr.Host)
+	if b.Addr.Port == "" {
+		b.Addr.Port = buildPort(b.Addr.Host)
+	}
+
+	if b.Logger == nil {
+		b.Logger = slog.Default()
+	}
 
 	return b, nil
 }
@@ -78,11 +94,22 @@ func WithTimeout(timeout int16) Option {
 	}
 }
 
+func WithLogger(logger slog.Logger) Option {
+	return func(b *Backend) {
+		b.Logger = &logger
+	}
+}
+
 func (back *Backend) Invoke(ctx context.Context, res chan<- *http.Response, req *http.Request) error {
 	// Change request host to backend host
 	req.URL.Host = back.Addr.Host
 
-	backendResp, err := back.client.Do(req)
+	atomic.AddInt32(&back.Conns, 1)
+	defer atomic.AddInt32(&back.Conns, -1)
+
+	back.Logger.Info("backend request", "host", back.Addr.Host, "connections_number", atomic.LoadInt32(&back.Conns))
+
+	backendResp, err := back.Do(req)
 	if err != nil {
 		return err
 	}
@@ -94,6 +121,7 @@ func (back *Backend) Invoke(ctx context.Context, res chan<- *http.Response, req 
 		err := backendResp.Body.Close()
 		if err != nil {
 			log.Printf("error to close backend response body: %v", err)
+			back.Logger.Info("error to close backend response body", "err", err, "host", back.Addr.Host)
 			return err
 		}
 
@@ -104,10 +132,14 @@ func (back *Backend) Invoke(ctx context.Context, res chan<- *http.Response, req 
 // HealthCheck checks if the backend is healthy by sending a GET request to the health path.
 // Any response not equal to 200 returns an error
 func (b *Backend) HealthCheck() (int, error) {
-	if b.HealthPath == nil {
+	if b.Id == nil || b.Id.UUID() == uuid.Nil {
+		return 0, errors.New("backend id cannot be nil")
+	}
 
+	if b.HealthPath == nil {
 		return 0, errors.New("health path cannot be empty, use WithHealthPath to configure")
 	}
+
 	if exists := strings.HasPrefix(*b.HealthPath, "/"); !exists {
 		return 0, errors.New("path must starts with /")
 	}
@@ -120,6 +152,12 @@ func (b *Backend) HealthCheck() (int, error) {
 	}
 
 	return resp.StatusCode, nil
+}
+
+func (b *Backend) TotalConn() int32 {
+	total := atomic.LoadInt32(&b.Conns)
+
+	return total
 }
 
 func buildURL(url, path string) string {

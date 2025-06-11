@@ -1,10 +1,11 @@
 package main
 
 import (
-	"context"
 	"log"
+	"log/slog"
 
 	"github.com/ckminhano/smart-balancer/internal/server"
+	"github.com/ckminhano/smart-balancer/internal/spec"
 	"github.com/ckminhano/smart-balancer/internal/storage"
 )
 
@@ -26,13 +27,19 @@ func main() {
 func load() *server.Proxy {
 	// TODO: Load path from flag
 	path := "config"
+	logger := slog.Default()
 
-	storage, err := storage.NewStorage(path)
+	s, err := spec.LoadSpec(path)
+	if err != nil {
+		log.Panicf("error to load specification: %v", err)
+	}
+
+	storage, err := storage.NewStorage(path, s, logger)
 	if err != nil {
 		log.Panicf("error to load storage: %v", err)
 	}
 
-	proxy, err := server.NewProxy(context.Background(), storage)
+	proxy, err := server.NewProxy(storage)
 	if err != nil {
 		log.Panicf("error to create a new proxy: %v", err)
 	}
