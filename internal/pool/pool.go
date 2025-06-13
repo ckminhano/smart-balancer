@@ -20,7 +20,7 @@ type Pool struct {
 	Logger   *slog.Logger
 	mu       sync.RWMutex
 
-	leastIdxConnection int32
+	Selector Balance
 }
 
 func NewPool(logger *slog.Logger) (*Pool, error) {
@@ -51,13 +51,18 @@ func (p *Pool) Dispatch(ctx context.Context, res chan<- *http.Response, req *htt
 
 // SelectBackend calls the balancer algorithm to select the backend
 func (p *Pool) Select() (*backend.Backend, error) {
-	maxConns := int32(math.MaxInt32)
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
+	// minConns receive the max conn numbers allowed for int32, and use this to compare
+	// with each backend total connections opens
+	minConns := int32(math.MaxInt32)
 
 	var selected *backend.Backend
 	for _, b := range p.Backends {
-		if b.TotalConn() <= maxConns {
+		if b.TotalConn() <= minConns {
 			selected = b
-			maxConns = b.TotalConn()
+			minConns = b.TotalConn()
 		}
 	}
 
@@ -86,12 +91,12 @@ func (p *Pool) Add(back *backend.Backend) error {
 }
 
 func (p *Pool) Remove(back backend.Backend) error {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-
 	if back.Id == nil || back.Id.UUID() == uuid.Nil {
 		return errors.New("invalid backend id")
 	}
+
+	p.mu.Lock()
+	defer p.mu.Unlock()
 
 	idx := -1
 	for i, b := range p.Backends {

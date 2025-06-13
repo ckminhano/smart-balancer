@@ -13,11 +13,6 @@
                     "name": "app-server-2",
                     "host": "localhost:9001",
                     "health": "/healthcheck"
-                },
-                {
-                    "name": "app-server-3",
-                    "host": "localhost:9002",
-                    "health": "/healthcheck"
                 }
             ]
         },
