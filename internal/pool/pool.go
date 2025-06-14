@@ -31,22 +31,22 @@ func NewPool(logger *slog.Logger) (*Pool, error) {
 }
 
 // Dispatch receives and start the request to the backend server.
-func (p *Pool) Dispatch(ctx context.Context, res chan<- *http.Response, req *http.Request) error {
+func (p *Pool) Dispatch(ctx context.Context, req *http.Request) (*http.Response, error) {
 	if req == nil {
-		return errors.New("http request cannot be nil")
+		return nil, errors.New("http request cannot be nil")
 	}
 
 	dest, err := p.Select()
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	err = dest.Invoke(ctx, res, req)
+	res, err := dest.Invoke(ctx, req)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	return nil
+	return res, nil
 }
 
 // SelectBackend calls the balancer algorithm to select the backend

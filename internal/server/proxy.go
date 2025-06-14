@@ -42,25 +42,13 @@ func (p *Proxy) Forward(ctx context.Context, req *http.Request) (*http.Response,
 		return nil, err
 	}
 
-	resCh := make(chan *http.Response, 1)
-	errCh := make(chan error, 1)
-
 	forwardRequest := middleware(req)
-	go func() {
-		err = targetPool.Dispatch(ctx, resCh, forwardRequest)
-		if err != nil {
-			errCh <- err
-		}
-	}()
-
-	select {
-	case resp := <-resCh:
-		return resp, nil
-	case err := <-errCh:
+	res, err := targetPool.Dispatch(ctx, forwardRequest)
+	if err != nil {
 		return nil, err
-	case <-ctx.Done():
-		return nil, ctx.Err()
 	}
+
+	return res, nil
 }
 
 func (p *Proxy) ListRoutes() ([]*route.Route, error) {
@@ -88,8 +76,7 @@ func middleware(req *http.Request) *http.Request {
 	}
 
 	// TODO: Check parser
-	// I can have transformations here
-
+	// Maybe I can put somen transformations here
 	backendRequest := http.Request{
 		Method: reqParam.method,
 		URL:    &reqParam.url,

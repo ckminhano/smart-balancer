@@ -3,7 +3,6 @@ package backend
 import (
 	"context"
 	"errors"
-	"log"
 	"log/slog"
 	"net/http"
 	"strings"
@@ -100,7 +99,7 @@ func WithLogger(logger slog.Logger) Option {
 	}
 }
 
-func (back *Backend) Invoke(ctx context.Context, res chan<- *http.Response, req *http.Request) error {
+func (back *Backend) Invoke(ctx context.Context, req *http.Request) (*http.Response, error) {
 	// Change request host to backend host
 	req.URL.Host = back.Addr.Host
 
@@ -111,22 +110,10 @@ func (back *Backend) Invoke(ctx context.Context, res chan<- *http.Response, req 
 
 	backendResp, err := back.Do(req)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	select {
-	case res <- backendResp:
-		return nil
-	case <-ctx.Done():
-		err := backendResp.Body.Close()
-		if err != nil {
-			log.Printf("error to close backend response body: %v", err)
-			back.Logger.Info("error to close backend response body", "err", err, "host", back.Addr.Host)
-			return err
-		}
-
-		return ctx.Err()
-	}
+	return backendResp, nil
 }
 
 // HealthCheck checks if the backend is healthy by sending a GET request to the health path.
