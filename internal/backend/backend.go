@@ -41,9 +41,9 @@ type Backend struct {
 	Timeout    int16
 	HealthPath *string
 
-	// Conns is not safe to use, instead get with TotalConn()
-	Conns  int32
-	Active bool
+	// Connections is not safe to use, instead get with TotalConn()
+	Connections int32
+	Active      bool
 }
 
 // NewBackend creates a new backend instance with the given address.
@@ -103,10 +103,10 @@ func (back *Backend) Invoke(ctx context.Context, req *http.Request) (*http.Respo
 	// Change request host to backend host
 	req.URL.Host = back.Addr.Host
 
-	atomic.AddInt32(&back.Conns, 1)
-	defer atomic.AddInt32(&back.Conns, -1)
+	atomic.AddInt32(&back.Connections, 1)
+	defer atomic.AddInt32(&back.Connections, -1)
 
-	back.Logger.Info("backend request", "host", back.Addr.Host, "connections_number", atomic.LoadInt32(&back.Conns))
+	back.Logger.Info("backend request", "host", back.Addr.Host, "connections_number", atomic.LoadInt32(&back.Connections))
 
 	backendResp, err := back.Do(req)
 	if err != nil {
@@ -142,7 +142,7 @@ func (b *Backend) HealthCheck() (int, error) {
 }
 
 func (b *Backend) TotalConn() int32 {
-	total := atomic.LoadInt32(&b.Conns)
+	total := atomic.LoadInt32(&b.Connections)
 
 	return total
 }
